@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unidade 5 - Dias Sem Acidentes | Elgin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+*{font-family:'Inter',sans-serif}
+html,body{height:100%;margin:0;overflow:hidden;background:#f8fafc}
+.gradient-bg{background:linear-gradient(135deg,#0095D8 0%,#00AEEF 100%)}
+.glass{background:rgba(255,255,255,.97);border:1px solid #fef08a;box-shadow:0 20px 40px rgba(0,0,0,.10)}
+.pulse{animation:pulse-scale 2s ease-in-out infinite}
+@keyframes pulse-scale{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+.num{font-size:clamp(4rem,9vw,7.5rem);line-height:1}
+@media (max-width:768px){html,body{overflow:auto}}
+</style>
+</head>
+<body>
+<div class="gradient-bg h-[38vh] min-h-[240px] pt-6 px-4 md:px-8"></div>
+<div class="max-w-[1400px] mx-auto px-4 md:px-8 -mt-[26vh] relative z-10">
+  <div class="mb-5 inline-flex items-center gap-2 bg-white/95 rounded-xl px-4 py-2 shadow">
+    <i data-lucide="building-2" class="w-5 h-5 text-sky-600"></i>
+    <span class="text-base md:text-lg font-bold text-slate-700">Visualizando: Unidade 5</span>
+    <span id="syncStatus" class="text-sm text-slate-500 ml-2 flex items-center gap-1"><i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Conectando...</span>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+    <div class="glass rounded-2xl p-6 md:p-8 pulse">
+      <div class="flex items-start justify-between gap-4">
+        <div><p class="text-slate-600 text-base md:text-lg font-medium mb-1">Dias Sem Acidentes</p>
+        <p id="daysWithoutAccident" class="num font-extrabold text-sky-600">—</p>
+        <p id="lastAccidentText" class="text-sm text-slate-500 mt-3">Carregando...</p></div>
+        <div class="bg-sky-100 p-3 rounded-xl shrink-0"><i data-lucide="trending-up" class="w-7 h-7 text-sky-600"></i></div>
+      </div>
+    </div>
+    <div class="glass rounded-2xl p-6 md:p-8">
+      <div class="flex items-start justify-between gap-4">
+        <div><p class="text-slate-600 text-base md:text-lg font-medium mb-1">Recorde Atual</p>
+        <p id="currentRecord" class="num font-extrabold text-slate-700">—</p>
+        <p class="text-sm text-slate-500 mt-3">Período atual em andamento</p></div>
+        <div class="bg-slate-100 p-3 rounded-xl shrink-0"><i data-lucide="target" class="w-7 h-7 text-slate-700"></i></div>
+      </div>
+    </div>
+    <div class="glass rounded-2xl p-6 md:p-8">
+      <div class="flex items-start justify-between gap-4">
+        <div><p class="text-slate-600 text-base md:text-lg font-medium mb-1">Maior Recorde</p>
+        <p id="historicRecord" class="num font-extrabold text-slate-800">—</p>
+        <p id="recordPeriod" class="text-sm text-slate-500 mt-3">Histórico máximo</p></div>
+        <div class="bg-slate-100 p-3 rounded-xl shrink-0"><i data-lucide="award" class="w-7 h-7 text-slate-700"></i></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module">
+lucide.createIcons();
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import {getDatabase,ref,onValue} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+const firebaseConfig={apiKey:"AIzaSyDtI74Jq-ONs-X5zMVHpzQ0IYtON_Zg4Qo",authDomain:"registro-de-seguranca.firebaseapp.com",databaseURL:"https://registro-de-seguranca-default-rtdb.firebaseio.com",projectId:"registro-de-seguranca",storageBucket:"registro-de-seguranca.firebasestorage.app",messagingSenderId:"863977864608",appId:"1:863977864608:web:776e50a39819066b1e78c5",measurementId:"G-XEZKZ7FQ23"};
+const db=getDatabase(initializeApp(firebaseConfig));
+let accidents=[];
+function formatDate(s){return new Date(s+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function daysBetween(a,b){return Math.floor(Math.abs(new Date(b+'T00:00')-new Date(a+'T00:00'))/86400000)}
+function daysSince(s){const t=new Date();t.setHours(0,0,0,0);const d=new Date(s+'T00:00');d.setHours(0,0,0,0);return Math.floor(Math.abs(t-d)/86400000)}
+function updateStats(){
+  const sorted=[...accidents].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  let daysWithout=0,last=null;
+  if(sorted.length){last=sorted[0].date;daysWithout=daysSince(last);document.getElementById('lastAccidentText').textContent=`Último acidente: ${formatDate(last)}`;}
+  else document.getElementById('lastAccidentText').textContent='Nenhum acidente registrado';
+  document.getElementById('daysWithoutAccident').textContent=daysWithout;
+  document.getElementById('currentRecord').textContent=daysWithout;
+  let max=0,start=null,end=null;
+  if(sorted.length===1){max=daysSince(sorted[0].date);start=sorted[0].date;end='hoje';}
+  else if(sorted.length>1){
+    const rev=[...sorted].reverse();
+    for(let i=0;i<rev.length-1;i++){const iv=daysBetween(rev[i].date,rev[i+1].date);if(iv>max){max=iv;start=rev[i].date;end=rev[i+1].date;}}
+    const cur=daysSince(rev[rev.length-1].date);if(cur>max){max=cur;start=rev[rev.length-1].date;end='hoje';}
+  }
+  document.getElementById('historicRecord').textContent=max;
+  if(max>0&&start) document.getElementById('recordPeriod').textContent=end==='hoje'?`De ${formatDate(start)} até hoje`:`De ${formatDate(start)} até ${formatDate(end)}`;
+}
+onValue(ref(db,'unidades/unidade5/acidentes'),snap=>{
+  const data=snap.val();
+  accidents=data?Object.entries(data).map(([id,v])=>({id,...v})):[];
+  updateStats();
+  document.getElementById('syncStatus').innerHTML='<i data-lucide="check" class="w-4 h-4 text-sky-600"></i> Sincronizado';
+  lucide.createIcons();
+});
+</script>
+</body>
+</html>
